@@ -1,14 +1,12 @@
+// imports
 import 'dart:async';
 import 'dart:convert';
-//import 'dart:html';
-//import 'dart:js';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:http/http.dart';
 import 'package:url_launcher/url_launcher.dart';
-//import 'get_request.dart';
-//import 'package:http/http.dart';
 
+//global variables
 String startingPoint = 'none';
 String destination1 = 'none';
 String destination2 = 'none';
@@ -17,12 +15,14 @@ String destination4 = 'none';
 String end = 'none';
 String googleMapsUrl = 'none';
 
+//main function
 void main(context) {
   runApp(MaterialApp(
     home: FirstRoute()
   ));
 }
 
+// Widget class for the home page
 class FirstRoute extends StatelessWidget {
   @override
   Widget build(BuildContext context){
@@ -39,21 +39,21 @@ class FirstRoute extends StatelessWidget {
             key: _formKey,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _buildstartingPointForm(),
+              children: [ // these are all the forms
+                _buildstartingPointForm(), //each form is its own widget class
                 _buildDestination1Form(),
                 _buildDestination2Form(),
                 _buildDestination3Form(),
                 _buildDestination4Form(),
                 _buildEndForm(),
-                SizedBox(height: 40),
-                ElevatedButton(
+                SizedBox(height: 40), // spacer
+                ElevatedButton( // submit button
                     onPressed: () {
-                      if(!_formKey.currentState!.validate()){
+                      if(!_formKey.currentState!.validate()){ // validation
                         return;
                       }
                       _formKey.currentState!.save();
-                      Navigator.push(context, MaterialPageRoute(builder: (context)=>SecondRoute()));
+                      Navigator.push(context, MaterialPageRoute(builder: (context)=>SecondRoute())); // go to second page
                       return;
                     },
                     child: Text('Calculate Fastest Route')
@@ -67,14 +67,14 @@ class FirstRoute extends StatelessWidget {
   }
 }
 
-class SecondRoute extends StatelessWidget {
+class SecondRoute extends StatelessWidget { // second page to calculate fastes route
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text("Directions"),
       ),
-      body: FutureBuilder(
+      body: FutureBuilder( // future builder is asyncronous
         builder: (ctx, snapshot) {
           // Checking if future is resolved or not
           if (snapshot.connectionState == ConnectionState.done) {
@@ -115,7 +115,7 @@ class SecondRoute extends StatelessWidget {
   }
 }
 
-_launchURL() async {
+_launchURL() async { // url launcher
   String url = googleMapsUrl;
   print(url);
   if (await canLaunch(url)) {
@@ -125,7 +125,7 @@ _launchURL() async {
   }
 }
 
-Widget _buildstartingPointForm() {
+Widget _buildstartingPointForm() { // widgets for form fields
   return TextFormField(
     decoration: InputDecoration(
       labelText: 'Start Location',
@@ -221,16 +221,15 @@ Widget _buildEndForm() {
   );
 }
 
-Future<String> getFastestRoute(start, des1, des2, des3, des4, endP) async {
-  String startingPointID = await createPlaceId(start);
+Future<String> getFastestRoute(start, des1, des2, des3, des4, endP) async { // the calculator for best route
+  String startingPointID = await createPlaceId(start); // get all the place id's from the google api
   String destination1ID = await createPlaceId(des1);
   String destination2ID = await createPlaceId(des2);
   String destination3ID = await createPlaceId(des3);
   String destination4ID = await createPlaceId(des4);
   String endID = await createPlaceId(endP);
 
-  print(createDistanceMatrixUrl(startingPointID, [destination1ID, destination2ID, destination3ID, destination4ID]));
-
+  // get the distance matrix data from google maps
   Map<String, dynamic> startResponse = jsonDecode((await get(Uri.parse(
     createDistanceMatrixUrl(startingPointID, [destination1ID, destination2ID, destination3ID, destination4ID])
   ))).body);
@@ -247,6 +246,7 @@ Future<String> getFastestRoute(start, des1, des2, des3, des4, endP) async {
       createDistanceMatrixUrl(destination4ID, [destination1ID, destination2ID, destination3ID, endID])
   ))).body);
 
+  // create 2 dimentional distance matrix
   var distanceMatrix = [
     [
       startResponse['rows'][0]['elements'][0]['duration']['value'],
@@ -255,7 +255,7 @@ Future<String> getFastestRoute(start, des1, des2, des3, des4, endP) async {
       startResponse['rows'][0]['elements'][3]['duration']['value'],
     ],
     [
-      -1,
+      -1, // placeholder
       des1Response['rows'][0]['elements'][0]['duration']['value'],
       des1Response['rows'][0]['elements'][1]['duration']['value'],
       des1Response['rows'][0]['elements'][2]['duration']['value'],
@@ -284,9 +284,9 @@ Future<String> getFastestRoute(start, des1, des2, des3, des4, endP) async {
     ],
   ];
 
-  var bestRoute = await getBestRoute(distanceMatrix);
+  var bestRoute = await getBestRoute(distanceMatrix); // calculate the shortest route
 
-  String finalUrl =
+  String finalUrl = // create a parsed string to get the directions with waypoints
       'https://www.google.com/maps/dir/?api=1&origin=placeholder&origin_place_id=' +
       startingPointID +
       '&destination=placeholder&destination_place_id=' +
@@ -300,10 +300,11 @@ Future<String> getFastestRoute(start, des1, des2, des3, des4, endP) async {
   return finalUrl;
 }
 
-getBestRoute(distanceMatrix){
+getBestRoute(distanceMatrix){ // calculator for shortest distance
   num bestDuration = 999999999999999;
   var bestRoute = [-1, -1, -1, -1];
   var currentRoute = [-1, -1, -1, -1];
+  // iteate through all possible routes
   for(int a = 0; a < 4; a++){
     currentRoute[0] = a;
     for(int b = 0; b < 4; b++){
@@ -312,8 +313,8 @@ getBestRoute(distanceMatrix){
         currentRoute[2] = c;
         for(int d = 0; d < 4; d++){
           currentRoute[3] = d;
-          if(currentRoute.length == currentRoute.toSet().length) {
-            num currentDuration = distanceMatrix[0][currentRoute[0]];
+          if(currentRoute.length == currentRoute.toSet().length) { // ignore duplicates
+            num currentDuration = distanceMatrix[0][currentRoute[0]]; // calculate the duration for the current iteration
             currentDuration +=
             distanceMatrix[currentRoute[0] + 1][currentRoute[1]];
             currentDuration +=
@@ -321,7 +322,7 @@ getBestRoute(distanceMatrix){
             currentDuration +=
             distanceMatrix[currentRoute[2] + 1][currentRoute[3]];
             currentDuration += distanceMatrix[currentRoute[3] + 1][4];
-            if (currentDuration < bestDuration) {
+            if (currentDuration < bestDuration) { // if the current duration is the shortest yet then record the current route
               bestDuration = currentDuration;
               bestRoute[0] = currentRoute[0];
               bestRoute[1] = currentRoute[1];
@@ -334,10 +335,10 @@ getBestRoute(distanceMatrix){
     }
   }
   print('Final best: $bestRoute');
-  return bestRoute;
+  return bestRoute; // return the current route
 }
 
-String getPlaceIdFromIndex(index, des1, des2, des3, des4){
+String getPlaceIdFromIndex(index, des1, des2, des3, des4){ // get the place id from the destination index
   String id = 'nothing';
   switch(index){
     case 0: {
@@ -360,7 +361,7 @@ String getPlaceIdFromIndex(index, des1, des2, des3, des4){
   return id;
 }
 
-String createDistanceMatrixUrl(start, destinations){
+String createDistanceMatrixUrl(start, destinations){ // parse a url to fetch a distance matrix given place id's
   String url = 'https://maps.googleapis.com/maps/api/distancematrix/json?units=imperial&origins=place_id:' + start + '&destinations=';
   for(int i=0; i < destinations.length; i++){
     url = url + 'place_id:' + destinations[i];
@@ -372,7 +373,7 @@ String createDistanceMatrixUrl(start, destinations){
   return url;
 }
 
-Future<String> createPlaceId(address) async {
+Future<String> createPlaceId(address) async { // parse a url for the users input and request the place id from google
   String formattedAddress = '';
   for(int i = 0; i < address.length; i++){
     if(address[i] == ' ') {
@@ -389,13 +390,4 @@ Future<String> createPlaceId(address) async {
   return placeId;
 }
 
-class DistanceMatrix {
-  var startResponse;
-  var des1Response;
-  var des2Response;
-  var des3Response;
-  var des4Response;
-
-}
-
-final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+final GlobalKey<FormState> _formKey = GlobalKey<FormState>(); // keys for the form widgets
